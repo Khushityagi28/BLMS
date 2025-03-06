@@ -1,0 +1,180 @@
+-- 1. Users Table
+CREATE TABLE Users (
+    Login_id INT PRIMARY KEY,
+    User_id VARCHAR(50) UNIQUE NOT NULL, -- Added UNIQUE to ensure foreign key compatibility
+    Password VARCHAR(255) NOT NULL,
+    User_role VARCHAR(20) NOT NULL
+);
+
+-- 2. Teacher Info Table
+CREATE TABLE Teacher_Info (
+    Teacher_id VARCHAR(50) PRIMARY KEY,
+    User_id VARCHAR(50),
+    Password VARCHAR(255) NOT NULL,
+    Teacher_name VARCHAR(100) NOT NULL,
+    Designation VARCHAR(50) NOT NULL,
+    Subject_specialization VARCHAR(100) NOT NULL,
+    Teacher_PhoneNo INT NOT NULL,
+    Teacher_Email VARCHAR(100) NOT NULL,
+    FOREIGN KEY (User_id) REFERENCES Users(User_id)
+);
+
+-- 3. Department Info Table
+CREATE TABLE Department_Info (
+    Dept_id VARCHAR(50) PRIMARY KEY,
+    Teacher_id VARCHAR(50),
+    Teacher_Address VARCHAR(255) NOT NULL,
+    FOREIGN KEY (Teacher_id) REFERENCES Teacher_Info(Teacher_id)
+);
+
+-- 4. Student Table
+CREATE TABLE Student (
+    Student_id VARCHAR(50) PRIMARY KEY,
+    User_id VARCHAR(50),
+    Password VARCHAR(255) NOT NULL,
+    Student_name VARCHAR(100) NOT NULL,
+    Student_Email VARCHAR(100) NOT NULL,
+    Student_PhoneNo INT NOT NULL,
+    Student_Address VARCHAR(255) NOT NULL,
+    FOREIGN KEY (User_id) REFERENCES Users(User_id)
+);
+
+-- 5. Department Table
+CREATE TABLE Department (
+    Dept_id VARCHAR(50) PRIMARY KEY,
+    Dept_name VARCHAR(100) NOT NULL
+);
+
+-- 6. Branch Table
+CREATE TABLE Branch (
+    Branch_name VARCHAR(100) PRIMARY KEY
+);
+
+-- 7. Subject Info Table
+CREATE TABLE Subject_Info (
+    Subject_code VARCHAR(50) PRIMARY KEY,
+    Subject_name VARCHAR(100) NOT NULL,
+    Date DATE NOT NULL
+);
+
+-- 8. Subject-Branch Mapping Table
+CREATE TABLE Subject_Branch_Mapping (
+    Subject_code VARCHAR(50),
+    Branch_name VARCHAR(100),
+    PRIMARY KEY (Subject_code, Branch_name),
+    FOREIGN KEY (Subject_code) REFERENCES Subject_Info(Subject_code),
+    FOREIGN KEY (Branch_name) REFERENCES Branch(Branch_name)
+);
+
+-- 9. Study Notes Metadata Table
+CREATE TABLE Study_Notes_Metadata (
+    Subject_code VARCHAR(50) PRIMARY KEY,
+    Handout VARCHAR(255) NOT NULL,
+    FOREIGN KEY (Subject_code) REFERENCES Subject_Info(Subject_code)
+);
+
+-- 10. Notes Details Table
+CREATE TABLE Notes_Details (
+    Note_ID INT PRIMARY KEY AUTO_INCREMENT,
+    Subject_code VARCHAR(50),
+    StudyNote_Link VARCHAR(255) NOT NULL,
+    FOREIGN KEY (Subject_code) REFERENCES Subject_Info(Subject_code)
+);
+
+-- 11. pre recorded user IDs table
+CREATE TABLE Authorized_Users(
+Auth_id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+User_id VARCHAR(50) UNIQUE NOT NULL,
+Is_registered BOOLEAN DEFAULT FALSE,
+Created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+INSERT INTO Authorized_Users (User_id) VALUES
+('TEACHER001'),
+('TEACHER002'),
+('TEACHER003');
+
+--12. Class Section table
+CREATE TABLE Class_Section (
+    Class_section_id INT PRIMARY KEY AUTO_INCREMENT,
+    Class_name VARCHAR(50) NOT NULL,
+    Section VARCHAR(10) NOT NULL,
+    Branch_name VARCHAR(100),
+    FOREIGN KEY (Branch_name) REFERENCES Branch(Branch_name)
+);
+
+--13. Teacher Subject Mapping
+CREATE TABLE Teacher_Subject_Mapping (
+    Mapping_id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    Teacher_id VARCHAR(50),
+    Subject_code VARCHAR(50),
+    Class_section_id INT,
+    FOREIGN KEY (Teacher_id) REFERENCES Teacher_Info(Teacher_id),
+    FOREIGN KEY (Subject_code) REFERENCES Subject_Info(Subject_code),
+    FOREIGN KEY (Class_section_id) REFERENCES Class_Section(Class_section_id)
+);
+
+--14. Student Class Mapping
+CREATE TABLE Student_Class_Mapping (
+    Student_id VARCHAR(50),
+    Class_section_id INT,
+    Semester INT NOT NULL,
+    Academic_Year VARCHAR(9) NOT NULL,
+    PRIMARY KEY (Student_id, Class_section_id),
+    FOREIGN KEY (Student_id) REFERENCES Student(Student_id),
+    FOREIGN KEY (Class_section_id) REFERENCES Class_Section(Class_section_id)
+);
+
+--15. Study Material
+CREATE TABLE Study_Material (
+    Material_id INT PRIMARY KEY AUTO_INCREMENT,
+    Teacher_id VARCHAR(50),
+    Subject_code VARCHAR(50),
+    Class_section_id INT,
+    File_Name VARCHAR(255) NOT NULL,
+    File_Path VARCHAR(255) NOT NULL,
+    Upload_Date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    Material_Type ENUM('NOTES', 'ASSIGNMENT') NOT NULL,
+    Description TEXT,
+    FOREIGN KEY (Teacher_id) REFERENCES Teacher_Info(Teacher_id),
+    FOREIGN KEY (Subject_code) REFERENCES Subject_Info(Subject_code),
+    FOREIGN KEY (Class_section_id) REFERENCES Class_Section(Class_section_id)
+);
+
+--16. Assignment Submission
+CREATE TABLE Assignment_Submission (
+    Submission_id INT PRIMARY KEY AUTO_INCREMENT,
+    Student_id VARCHAR(50),
+    Material_id INT,
+    File_Name VARCHAR(255) NOT NULL,
+    File_Path VARCHAR(255) NOT NULL,
+    Submission_Date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    Grade DECIMAL(5,2),
+    Feedback TEXT,
+    FOREIGN KEY (Student_id) REFERENCES Student(Student_id),
+    FOREIGN KEY (Material_id) REFERENCES Study_Material(Material_id)
+);
+
+-- Create indexes for better performance
+CREATE INDEX idx_study_material_teacher ON Study_Material(Teacher_id);
+CREATE INDEX idx_study_material_subject ON Study_Material(Subject_code);
+CREATE INDEX idx_assignment_submission_student ON Assignment_Submission(Student_id);
+
+-- Insert sample data
+INSERT INTO Class_Section (Class_name, Section, Branch_name)
+VALUES
+('First Year', 'A', 'Computer Science'),
+('Second Year', 'B', 'Computer Science');
+
+-- Insert sample Teacher-Subject mapping
+INSERT INTO Teacher_Subject_Mapping (Teacher_id, Subject_code, Class_section_id)
+SELECT DISTINCT
+    t.Teacher_id,
+    s.Subject_code,
+    c.Class_section_id
+FROM
+    Teacher_Info t
+    CROSS JOIN Subject_Info s
+    CROSS JOIN Class_Section c
+WHERE
+    t.User_id = 'TEACHER001'
+    AND ROWNUM = 1;
